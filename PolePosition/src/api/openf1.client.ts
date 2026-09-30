@@ -2,7 +2,8 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import * as Models from './openf1.models'
 import { catchError, concatMap, map, Observable, of, pipe, throwError, timeout, timer } from 'rxjs';
-import { Session, Snapshot } from './openf1.models';
+import { RaceMessage, Session, Snapshot, Weather } from './openf1.models';
+import { latestByDriver } from './openf1.helper';
 
 @Injectable({ providedIn: 'root' })
 export class OpenF1Client {
@@ -114,6 +115,56 @@ export class OpenF1Client {
         windowStart: from,
         };
 
-        return of(snapshot);
+        // Loading the driver data into the snapshot.
+        snapshot.drivers.length 
+            ? of(snapshot) : 
+            this.loadRecord<Models.Driver>('drivers', query, snapshot, (data) => snapshot.drivers = data);
+
+        pipe(
+            // Loading the results data into the snapshot.
+            concatMap(() => ended 
+                ? this.loadRecord<Models.Result>('session_results', query, snapshot, (data) => snapshot.results = data) 
+                : of(snapshot)),
+
+            // Loading the Position data into the snapshot.
+            concatMap(() => ended && snapshot.results.length 
+                ? of(snapshot) 
+                : this.loadRecord<Models.Position>('positions',
+                    {
+                        ...window,
+                        'date>': previous ? from : new Date(Math.max(Date.parse(session.date_start), end - 30 * 60_000)).toISOString(),
+                    },
+                    snapshot,
+                    (data) => {
+                        snapshot.positions = [...latestByDriver([...snapshot.positions, ...data], (data) => data.date).values(),];
+                    }
+                )
+            ),
+
+            // Loading the Intervals into the snapshot.
+            concatMap(() => session.session_type === 'Race' && !snapshot.results.length 
+                ? this.loadRecord<Models.Interval>('intervals', window, snapshot, (data) => (snapshot.intervals = data)) 
+                : of(snapshot)),
+
+            // Loading the Laps into the snapshot.
+            concatMap(() => this.loadRecord<Models.Lap>('laps', 
+                    { ...query, 'date_start>': from, 'date_start<': new Date(end).toISOString() },
+                    snapshot,
+                    (data) => (snapshot.laps = data)
+                ),
+            ),
+            
+            // Loading the Weather accosiated with the session into the snapshot.
+            concatMap(() => this.loadRecord<Weather>('weather', window, snapshot, (data) => (snapshot.weather = data))),
+            
+            // Loading the Race Control messages about the session into the snapshot.
+            concatMap(() => this.loadRecord<RaceMessage>('race_control', window, snapshot, (data) => (snapshot.messages = data))),
+
+            // Returning the snapshot object with the timestamp the data was received.
+            map(() => ({ ...snapshot, fetchedAt: Date.now() }))
+        );
+
+        // Returning the snapshot object.
+        return of(snapshot);            
     }
 }
