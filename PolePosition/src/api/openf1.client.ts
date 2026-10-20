@@ -3,7 +3,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import * as Models from './openf1.models'
 import { catchError, concatMap, map, Observable, of, pipe, throwError, timeout, timer } from 'rxjs';
 import { RaceMessage, Session, Snapshot, Weather } from './openf1.models';
-import { latestByDriver } from './openf1.helper';
+import { latestByDriver, sessionPhase } from './openf1.helper';
 
 @Injectable({ providedIn: 'root' })
 export class OpenF1Client {
@@ -55,7 +55,7 @@ export class OpenF1Client {
 
     // Getting the latest avaliable session.
     latestSession(): Observable<Session[]> {
-        return this.get<Session>('sessions', { session_key: 'latest' });
+        return this.get<Session>('sessions', { session_key: '11234' });
     }
 
     // Helper function for data loading for snapshots.
@@ -88,7 +88,7 @@ export class OpenF1Client {
     // Getting a snapshot of data for a given session.
     snapshot(session: Session, previous?: Snapshot): Observable<Snapshot> {
         const now = Date.now();
-        const ended = 0; // TODO: Figure out a way to determin state of the session.
+        const ended = sessionPhase(session, now) === 'recorded';
 
         // Calculating timeframes.
         const end = Math.min(now, Date.parse(session.date_end));
@@ -103,27 +103,27 @@ export class OpenF1Client {
         
         // Creating the snapshot object.
         const snapshot: Snapshot = {
-        drivers: previous?.drivers ?? [],
-        results: [],
-        positions: previous?.positions ?? [],
-        intervals: [],
-        laps: [],
-        weather: [],
-        messages: [],
-        warnings: [],
-        fetchedAt: now,
-        windowStart: from,
+            drivers: previous?.drivers ?? [],
+            results: [],
+            positions: previous?.positions ?? [],
+            intervals: [],
+            laps: [],
+            weather: [],
+            messages: [],
+            warnings: [],
+            fetchedAt: now,
+            windowStart: from,
         };
 
         // Loading the driver data into the snapshot.
-        snapshot.drivers.length 
+        const initialSnapshot = snapshot.drivers.length 
             ? of(snapshot) : 
             this.loadRecord<Models.Driver>('drivers', query, snapshot, (data) => snapshot.drivers = data);
 
-        pipe(
+        return initialSnapshot.pipe(
             // Loading the results data into the snapshot.
             concatMap(() => ended 
-                ? this.loadRecord<Models.Result>('session_results', query, snapshot, (data) => snapshot.results = data) 
+                ? this.loadRecord<Models.Result>('sessions', query, snapshot, (data) => snapshot.results = data) 
                 : of(snapshot)),
 
             // Loading the Position data into the snapshot.
@@ -163,8 +163,5 @@ export class OpenF1Client {
             // Returning the snapshot object with the timestamp the data was received.
             map(() => ({ ...snapshot, fetchedAt: Date.now() }))
         );
-
-        // Returning the snapshot object.
-        return of(snapshot);            
     }
 }
