@@ -1,8 +1,3 @@
-
-// Minor datatype for timing gap representations.
-export type Gap = number | string | null
-
-// Defines the data used to represent a Formula 1 session.
 export interface Session {
   session_key: number;
   meeting_key: number;
@@ -16,16 +11,8 @@ export interface Session {
   location: string;
   year: number;
   is_cancelled?: boolean;
-};
-
-// Defines the data representing a driver's position in a session.
-export interface Position {
-  date: string;
-  driver_number: number;
-  position: number;
 }
 
-// Defines the data representing an F1 driver.
 export interface Driver {
   driver_number: number;
   full_name: string;
@@ -34,7 +21,21 @@ export interface Driver {
   team_colour: string;
 }
 
-// Defines the data representing a lap performed by a given driver.
+export interface Position {
+  date: string;
+  driver_number: number;
+  position: number;
+}
+
+export type Gap = number | string | null;
+
+export interface Interval {
+  date: string;
+  driver_number: number;
+  gap_to_leader: Gap;
+  interval: Gap;
+}
+
 export interface Lap {
   date_start: string | null;
   driver_number: number;
@@ -43,17 +44,6 @@ export interface Lap {
   is_pit_out_lap: boolean;
 }
 
-// Defines the intervals between drivers in a session.
-//  This is more reprsentative data than just the gap itself.
-//  It is also associated with a driver.
-export interface Interval {
-  date: string;
-  driver_number: number;
-  gap_to_leader: Gap;
-  interval: Gap;
-}
-
-// Defines the data representing a driver's result within a session.
 export interface Result {
   driver_number: number;
   position: number | null;
@@ -65,7 +55,6 @@ export interface Result {
   dsq: boolean;
 }
 
-// Data representing the weather in a given session. 
 export interface Weather {
   date: string;
   air_temperature: number | null;
@@ -75,7 +64,6 @@ export interface Weather {
   rainfall: number | null;
 }
 
-// Defines the data output for a given race control message.
 export interface RaceMessage {
   date: string | null;
   category: string;
@@ -85,7 +73,6 @@ export interface RaceMessage {
   driver_number: number | null;
 }
 
-// Defines a snapshot of a F1 session for display purposes. 
 export interface Snapshot {
   drivers: Driver[];
   positions: Position[];
@@ -99,7 +86,6 @@ export interface Snapshot {
   windowStart: string;
 }
 
-// Defines the standings of the drivers in a session. 
 export interface Standing {
   driver: Driver;
   position: number | null;

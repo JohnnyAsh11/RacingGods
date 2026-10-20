@@ -3,11 +3,11 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "analytics": "de90bc13-2c4e-4477-bd92-df91c421f080"
+    "analytics": false
   },
   "newProjectRoot": "projects",
   "projects": {
-    "PolePosition": {
+    "openf1-dashboard": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -25,17 +25,7 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.css"
-            ],
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "security": {
-              "allowedHosts": []
-            },
-            "ssr": {
-              "entry": "src/server.ts"
-            }
+            "styles": ["src/styles.css"]
           },
           "configurations": {
             "production": {
@@ -47,8 +37,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "16kB",
+                  "maximumError": "20kB"
                 }
               ],
               "outputHashing": "all"
@@ -65,10 +55,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "PolePosition:build:production"
+              "buildTarget": "openf1-dashboard:build:production"
             },
             "development": {
-              "buildTarget": "PolePosition:build:development"
+              "buildTarget": "openf1-dashboard:build:development"
             }
           },
           "defaultConfiguration": "development"

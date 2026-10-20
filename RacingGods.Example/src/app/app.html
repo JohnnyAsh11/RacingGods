@@ -1,0 +1,446 @@
+<a class="skip-link" href="#timing">Skip to timing</a>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="OpenF1 pit wall home"
+    ><span class="brand-mark" aria-hidden="true">//</span> RACING<span>GODS</span
+    ><span class="brand-divider"></span><small>PIT WALL</small></a
+  >
+  <span class="header-note">UNDER DEVELOPMENT</span>
+  <a class="docs-link" href="https://openf1.org/docs/" target="_blank" rel="noreferrer"
+    >API docs <span aria-hidden="true">&#8599;</span></a
+  >
+</header>
+
+<main>
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow"><span class="red-line"></span> THE DATA PADDOCK</p>
+      <h1>Take your seat on the pit wall.</h1>
+      <p class="subtitle">Timing, conditions, and the calls that shape a racing god.</p>
+    </div>
+    <div class="mode-label">
+      <span class="status-dot" [class.live-dot]="live()"></span>{{ status()
+      }}<small>POWERED BY OPENF1</small>
+    </div>
+  </section>
+
+  <section class="session-picker" aria-label="Session selection">
+    <div class="picker-title">
+      <span class="section-number">01</span
+      ><span>SESSION<br /><small>Choose your weekend</small></span>
+    </div>
+    <label class="year-select"
+      >Season<select
+        #yearSelect
+        [value]="year()"
+        (change)="changeYear(yearSelect.value)"
+        [disabled]="catalogLoading()"
+      >
+        @for (value of years; track value) {
+          <option [value]="value">{{ value }}</option>
+        }
+      </select></label
+    >
+    <label class="session-select"
+      >Session<select
+        #sessionSelect
+        [value]="selected()?.session_key ?? ''"
+        (change)="choose(sessionSelect.value)"
+        [disabled]="catalogLoading() || !sessions().length"
+      >
+        @if (!sessions().length) {
+          <option value="">
+            {{ catalogLoading() ? 'Loading sessions...' : 'No sessions available' }}
+          </option>
+        }
+        @for (session of sessions(); track session.session_key) {
+          <option [value]="session.session_key" [selected]="session.session_key === selected()?.session_key">
+            {{ session.date_start | date: 'MMM d' : 'UTC' }} / {{ session.country_name }} /
+            {{ session.session_name }}{{ session.is_cancelled ? ' (cancelled)' : '' }}
+          </option>
+        }
+      </select></label
+    >
+    <button class="latest-button" (click)="latest()" [disabled]="loading()">
+      Latest available <span aria-hidden="true">&#8599;</span>
+    </button>
+  </section>
+
+  @if (error()) {
+    <div class="notice error" role="alert">
+      <strong>Connection interrupted</strong
+      ><span
+        >{{ error() }}
+        @if (snapshot()) {
+          Previously retrieved values remain visible.
+        }</span
+      ><button (click)="refresh()" [disabled]="loading()">Retry</button>
+    </div>
+  }
+  @if (catalogLoading()) {
+    <div class="notice" role="status">Connecting to OpenF1 and finding available sessions...</div>
+  }
+  @if (!catalogLoading() && !sessions().length && !error()) {
+    <div class="notice">No sessions are available for this season. Choose another year.</div>
+  }
+
+  @if (selected(); as session) {
+    <section class="circuit-card" aria-label="Session details">
+      <div class="circuit-copy">
+        <p class="eyebrow">{{ session.country_name }} <span>/</span> {{ session.year }} SEASON</p>
+        <h2>{{ session.circuit_short_name }}</h2>
+        <p>{{ session.location }} <span class="muted">/</span> {{ session.session_name }}</p>
+        <div class="session-tags">
+          <span>{{ session.session_type }}</span
+          ><span>{{ session.date_start | date: 'dd MMM yyyy' : 'UTC' }}</span
+          ><span>{{ session.date_start | date: 'HH:mm' : 'UTC' }} UTC</span>
+        </div>
+      </div>
+      <div class="circuit-art" aria-hidden="true">
+        <span class="art-orbit orbit-one"></span><span class="art-orbit orbit-two"></span>
+        <div class="art-word">{{ session.country_code }}</div>
+        <span class="art-caption">OPENF1 / SESSION {{ session.session_key }}</span>
+      </div>
+      <div class="circuit-status">
+        <span class="status-dot" [class.live-dot]="live()"></span>{{ status() }}
+      </div>
+    </section>
+
+    <div class="data-context" role="status">
+      @switch (phase()) {
+        @case ('recorded') {
+          @if (accessLocked()) {
+            <span
+              ><strong>Archive pending.</strong> OpenF1 keeps session data subscription-only until
+              30 minutes after the scheduled end. Choose an older session for free access.</span
+            >
+          } @else {
+            <span
+              ><strong>Recorded session</strong> &mdash; no active session is being streamed.
+              @if (snapshot()?.results?.length) {
+                Official session classification.
+              } @else {
+                Positions are the last available samples in the window, not a final classification.
+              }
+            </span>
+          }
+        }
+        @case ('active') {
+          <span
+            ><strong>{{
+              liveEnabled()
+                ? live()
+                  ? 'Live timing connected'
+                  : 'Waiting for fresh timing'
+                : 'Real-time access is locked'
+            }}</strong>
+            &mdash;
+            {{
+              liveEnabled()
+                ? 'REST updates every 30 seconds after each completed refresh; provider data may be delayed.'
+                : 'OpenF1 requires a paid subscription. Choose a session that ended over 30 minutes ago for free data. No purchase is needed to explore the archive.'
+            }}</span
+          >
+        }
+        @case ('upcoming') {
+          <span
+            ><strong>This session has not started.</strong> No timing data is expected yet. Use
+            Latest available to return to a recorded session.</span
+          >
+        }
+        @case ('cancelled') {
+          <span
+            ><strong>This session was cancelled.</strong> No timing updates will be requested.</span
+          >
+        }
+      }
+      @if (stale()) {
+        <span class="stale-badge">STALE DATA</span>
+      }
+    </div>
+
+    <div class="dashboard-grid">
+      <section
+        class="panel timing-panel"
+        id="timing"
+        aria-labelledby="timing-title"
+        [attr.aria-busy]="loading()"
+      >
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">THE RUNNING ORDER</p>
+            <h3 id="timing-title">
+              Driver timing <span class="count">{{ rows().length }}</span>
+            </h3>
+          </div>
+          <div class="timing-actions">
+            @if (phase() === 'active' && liveEnabled()) {
+              <button class="quiet-button" (click)="togglePause()">
+                {{ paused() ? 'Resume' : 'Pause' }}
+              </button>
+            }
+            <button
+              class="icon-button"
+              aria-label="Refresh session data"
+              (click)="refresh()"
+              [disabled]="
+                loading() || phase() === 'upcoming' || phase() === 'cancelled' || accessLocked()
+              "
+            >
+              <span [class.spinning]="loading()" aria-hidden="true">&#8635;</span>
+            </button>
+          </div>
+        </div>
+        @if (loading() && !snapshot()) {
+          <div class="loading-bar"></div>
+          <div class="empty-state" role="status">
+            <span class="empty-icon" aria-hidden="true">//</span>
+            <h4>Setting up the pit wall</h4>
+            <p>
+              Retrieving timing and conditions.<br />Requests are paced to respect OpenF1 limits.
+            </p>
+          </div>
+        } @else if (!rows().length) {
+          <div class="empty-state">
+            <span class="empty-icon" aria-hidden="true">//</span>
+            <h4>
+              {{
+                accessLocked()
+                  ? 'The archive is open. Live is optional.'
+                  : 'No driver timing available'
+              }}
+            </h4>
+            <p>
+              {{
+                accessLocked()
+                  ? 'Select a session that ended over 30 minutes ago to explore public data.'
+                  : 'Timing may not have been published for this session. Try another session or refresh later.'
+              }}
+            </p>
+          </div>
+        } @else {
+          <div
+            class="table-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="Driver timing table, scroll horizontally on small screens"
+          >
+            <table>
+              <caption class="sr-only">
+                Driver positions, gap to leader, interval, laps and latest sampled lap time. Missing
+                data is shown as two dashes.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">POS</th>
+                  <th scope="col">DRIVER / TEAM</th>
+                  <th scope="col">GAP</th>
+                  <th scope="col">INT.</th>
+                  <th scope="col">LAP</th>
+                  <th scope="col">LAST SAMPLE</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of rows(); track row.driver.driver_number) {
+                  <tr>
+                    <td
+                      class="position"
+                      [class.podium]="row.position !== null && row.position <= 3"
+                      [attr.title]="
+                        snapshot()?.results?.length
+                          ? 'Session classification'
+                          : row.date
+                            ? 'Last position change: ' + row.date
+                            : 'No observed position in the seed window'
+                      "
+                    >
+                      {{ row.position ?? '--' }}
+                    </td>
+                    <td>
+                      <div
+                        class="driver-cell"
+                        [style.--team-color]="teamColor(row.driver.team_colour)"
+                      >
+                        <span class="driver-number">{{ row.driver.driver_number }}</span>
+                        <div>
+                          <span class="driver-name">{{ row.driver.full_name }}</span
+                          ><span class="team-name">{{ row.driver.team_name }}</span>
+                        </div>
+                        <span class="driver-acronym">{{ row.driver.name_acronym }}</span>
+                      </div>
+                    </td>
+                    <td class="numeric" [class.leader]="row.gap === 0">
+                      {{ row.status || gap(row.gap) }}
+                    </td>
+                    <td class="numeric muted">{{ gap(row.interval) }}</td>
+                    <td class="numeric">{{ row.lap ?? '--' }}</td>
+                    <td class="numeric lap-time">{{ lapTime(row.lapTime) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <div class="panel-foot">
+          <span class="status-dot"></span>
+          @if (snapshot(); as data) {
+            Fetched {{ data.fetchedAt | date: 'HH:mm:ss' : 'UTC' }} UTC
+            <span class="foot-right">{{ loading() ? 'REFRESHING...' : 'OPENF1 DATA' }}</span>
+          } @else {
+            Awaiting session data
+          }
+        </div>
+      </section>
+
+      <aside class="side-panels">
+        <section class="panel weather-panel" aria-labelledby="weather-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">AT THE CIRCUIT</p>
+              <h3 id="weather-title">Track conditions</h3>
+            </div>
+            <span class="weather-symbol" aria-hidden="true">&#9728;</span>
+          </div>
+          @if (weather(); as conditions) {
+            <div class="temperature-grid">
+              <div>
+                <span class="metric-label">AIR TEMP</span
+                ><strong>{{ conditions.air_temperature ?? '--' }}<small>&deg;C</small></strong>
+              </div>
+              <div>
+                <span class="metric-label">TRACK TEMP</span
+                ><strong>{{ conditions.track_temperature ?? '--' }}<small>&deg;C</small></strong>
+              </div>
+            </div>
+            <dl class="weather-details">
+              <div>
+                <dt>Track rainfall</dt>
+                <dd [class.dry]="conditions.rainfall === 0">
+                  {{
+                    conditions.rainfall === 0
+                      ? 'NO RAIN'
+                      : conditions.rainfall === 1
+                        ? 'RAIN DETECTED'
+                        : '--'
+                  }}
+                </dd>
+              </div>
+              <div>
+                <dt>Humidity</dt>
+                <dd>{{ conditions.humidity ?? '--' }} %</dd>
+              </div>
+              <div>
+                <dt>Wind speed</dt>
+                <dd>{{ conditions.wind_speed ?? '--' }} m/s</dd>
+              </div>
+            </dl>
+            <div class="panel-foot">
+              Observed {{ conditions.date | date: 'HH:mm:ss' : 'UTC' }} UTC
+            </div>
+          } @else {
+            <div class="compact-empty">
+              {{
+                loading() ? 'Retrieving conditions...' : 'No weather observations in this window.'
+              }}
+            </div>
+          }
+        </section>
+
+        <section class="panel control-panel" aria-labelledby="control-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">FROM THE STEWARDS</p>
+              <h3 id="control-title">Race control</h3>
+            </div>
+            <span class="message-icon" aria-hidden="true">&#9873;</span>
+          </div>
+          <div class="filter-tabs" role="group" aria-label="Filter race control messages">
+            <button
+              [class.selected]="filter() === 'all'"
+              [attr.aria-pressed]="filter() === 'all'"
+              (click)="filter.set('all')"
+            >
+              All messages</button
+            ><button
+              [class.selected]="filter() === 'flags'"
+              [attr.aria-pressed]="filter() === 'flags'"
+              (click)="filter.set('flags')"
+            >
+              Flags</button
+            ><button
+              [class.selected]="filter() === 'notices'"
+              [attr.aria-pressed]="filter() === 'notices'"
+              (click)="filter.set('notices')"
+            >
+              Notices
+            </button>
+          </div>
+          <div class="message-list">
+            @for (message of messages(); track $index) {
+              <article
+                class="race-message"
+                [class.yellow-message]="message.flag?.includes('YELLOW')"
+                [class.red-message]="message.flag === 'RED'"
+              >
+                <div class="message-meta">
+                  <time>{{ (message.date | date: 'HH:mm:ss' : 'UTC') || '--' }}</time
+                  ><span>{{ message.flag || message.category }}</span>
+                </div>
+                <p>{{ message.message }}</p>
+                @if (message.lap_number) {
+                  <small>LAP {{ message.lap_number }}</small>
+                }
+              </article>
+            } @empty {
+              <div class="compact-empty">
+                {{
+                  loading()
+                    ? 'Listening for published messages...'
+                    : 'No messages in this window for this filter.'
+                }}
+              </div>
+            }
+          </div>
+          <div class="panel-foot">Latest 40 messages in the query window &middot; UTC</div>
+        </section>
+      </aside>
+    </div>
+
+    @if (snapshot(); as data) {
+      @if (data.warnings.length) {
+        <div class="notice warning" role="alert">
+          <strong>Some data is unavailable</strong>
+          <div>
+            @for (warning of data.warnings; track warning) {
+              <p>{{ warning }}</p>
+            }
+          </div>
+        </div>
+      }
+      <p class="data-note">
+        Timing samples, weather and messages cover
+        {{ data.windowStart | date: 'HH:mm' : 'UTC' }} UTC through the latest fetch or scheduled
+        session end (up to 30 minutes). Last sample is the latest reported lap in that window, not a
+        personal best. Gaps are provided by OpenF1, not estimated; intervals are race-only and are
+        omitted for final classifications. Positions are changes: seeded from up to 30 minutes of
+        history, then retained while watching when unchanged. Drivers not seen in that history
+        remain unranked; no missing positions are inferred. <span>-- means unavailable.</span>
+      </p>
+    }
+  }
+  <section class="access-note">
+    <span class="access-icon" aria-hidden="true">i</span>
+    <p>
+      <strong>Open data. No invented laps.</strong> Historical sessions from 2023 are free. Genuine
+      live access needs your own OpenF1 subscription and server-side credentials. This dashboard
+      never stores credentials in your browser.
+      <a href="https://openf1.org/auth.html" target="_blank" rel="noreferrer"
+        >About live access &#8599;</a
+      >
+    </p>
+  </section>
+</main>
+<footer>
+  <a class="footer-brand" href="./">RACING GODS <span>/ PIT WALL</span></a>
+  <p>Independent, unofficial dashboard. Not affiliated with Formula 1 or the FIA.</p>
+  <span>BUILT FOR CHAMPIONS.</span>
+</footer>

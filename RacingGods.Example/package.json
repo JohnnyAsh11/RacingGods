@@ -1,13 +1,15 @@
 {
-  "name": "pole-position",
+  "name": "openf1-dashboard",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node scripts/dev.mjs",
+    "server": "node server/index.mjs",
+    "serve": "node server/index.mjs",
+    "test:server": "vitest run server/gateway.test.mjs --environment node",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "serve:ssr:PolePosition": "node dist/PolePosition/server/server.mjs"
+    "test": "ng test"
   },
   "private": true,
   "packageManager": "npm@11.19.0",
@@ -17,10 +19,7 @@
     "@angular/core": "^22.1.0",
     "@angular/forms": "^22.1.0",
     "@angular/platform-browser": "^22.1.0",
-    "@angular/platform-server": "^22.1.0",
     "@angular/router": "^22.1.0",
-    "@angular/ssr": "^22.1.8",
-    "express": "^5.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -28,8 +27,6 @@
     "@angular/build": "^22.1.8",
     "@angular/cli": "^22.1.8",
     "@angular/compiler-cli": "^22.1.0",
-    "@types/express": "^5.0.1",
-    "@types/node": "^20.17.19",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
