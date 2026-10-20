@@ -39,7 +39,7 @@ export class OpenF1Service {
 
   get<T>(endpoint: string, query: Record<string, string | number>): Observable<T[]> {
     return this.http
-      .get<T[]>(`/api/openf1/${endpoint}`, { params: new HttpParams({ fromObject: query }) })
+      .get<T[]>(`https://api.openf1.org/v1/${endpoint}`, { params: new HttpParams({ fromObject: query }) })
       .pipe(
         timeout(25_000),
         map((data) => {
