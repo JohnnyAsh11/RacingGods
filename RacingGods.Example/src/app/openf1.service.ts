@@ -28,18 +28,19 @@ export function apiError(error: unknown): string {
     ? 'OpenF1 took too long to respond. Please try again.'
     : 'Unexpected data error. Please refresh or choose another session.';
 }
+const API_BASE = 'https://api.openf1.org/v1';
 
 @Injectable({ providedIn: 'root' })
 export class OpenF1Service {
   private readonly http = inject(HttpClient);
 
-  config(): Observable<{ liveEnabled: boolean }> {
-    return this.http.get<{ liveEnabled: boolean }>('/api/config').pipe(timeout(10_000));
-  }
+config(): Observable<{ liveEnabled: boolean }> {
+  return of({ liveEnabled: false });
+}
 
   get<T>(endpoint: string, query: Record<string, string | number>): Observable<T[]> {
     return this.http
-      .get<T[]>(`https://api.openf1.org/v1/${endpoint}`, { params: new HttpParams({ fromObject: query }) })
+      .get<T[]>(`${API_BASE}/${endpoint}`, { params: new HttpParams({ fromObject: query }) })
       .pipe(
         timeout(25_000),
         map((data) => {
